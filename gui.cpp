@@ -1,15 +1,19 @@
-
-#include "gui.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_win32.h"
-#include "imgui/imgui_impl_dx9.h"
-#include "modules/core/Logger.h"
+// gui.cpp
 
 #include <iostream>
 #include <d3d9.h>
 #pragma comment(lib, "d3d9.lib")
 #include <tchar.h>
 #include <thread>
+
+#include "gui.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx9.h"
+#include "modules/core/Logger.h"
+#include "Globals.h"
+#include "modules/settings/Theme.h"
+#include "modules/settings/ThemeManager.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
     HWND window,
@@ -130,12 +134,6 @@ void gui::CreateHWindow(
         MessageBoxW(NULL, L"Fenster konnte nicht erstellt werden.", L"Fehler", MB_ICONERROR);
         return;
     }
-    // Nachdem das Fenster erfolgreich erstellt wurde, also direkt vor ShowWindow/UpdateWindow:
-    LONG exStyle = GetWindowLong(window, GWL_EXSTYLE);
-    SetWindowLong(window, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-
-    // Setze den Farbschlüssel: Alle Pixel in Schwarz (0,0,0) werden transparent
-    SetLayeredWindowAttributes(window, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
     ShowWindow(window, SW_SHOWDEFAULT);
     UpdateWindow(window);
@@ -289,11 +287,11 @@ void gui::Render() noexcept
 
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize({currentWidth, currentHeight});
-    ImGui::Begin("SauberZauber", &exit, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Utils", &exit, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 
     if (ImGui::BeginTabBar("MainTabBar"))
     {
-        // Tab für Reinigungsvorgänge
+        // General Menu Information
         if (ImGui::BeginTabItem("Menu"))
         {
             ImGui::Separator();
@@ -304,8 +302,297 @@ void gui::Render() noexcept
         {
             if (ImGui::CollapsingHeader("Templates"))
             {
-                ImGui::Text("Change the look of the Window");
+                ImGui::Text("Templates");
+
+                // Kombinierte Liste aller Themes (Built-in und Custom)
+                std::vector<std::string> allThemes = gThemeManager->getAllThemeNames();
+                static int selectedThemeIndex = -1;
+                if (!allThemes.empty())
+                {
+                    std::vector<const char *> themeNames;
+                    for (const auto &name : allThemes)
+                        themeNames.push_back(name.c_str());
+
+                    if (ImGui::Combo("Theme", &selectedThemeIndex, themeNames.data(), themeNames.size()))
+                    {
+                        if (selectedThemeIndex >= 0 && selectedThemeIndex < allThemes.size())
+                        {
+                            gThemeManager->setCurrentTheme(allThemes[selectedThemeIndex]);
+                        }
+                    }
+                }
+
+                // Eingabefeld für neuen Theme-Namen (zum Speichern)
+                static char newThemeName[64] = "";
+                ImGui::InputText("New Theme Name", newThemeName, sizeof(newThemeName));
+
+                // Button: Save Theme
+                if (ImGui::Button("Save Theme", ImVec2(100, 0)))
+                {
+                    if (strlen(newThemeName) > 0)
+                    {
+                        gThemeManager->saveCurrentThemeAs(newThemeName);
+                        // Optional: Liste aktualisieren
+                        selectedThemeIndex = -1;
+                    }
+                }
+                ImGui::SameLine();
+
+                // Button: Delete Theme
+                if (ImGui::Button("Delete Theme", ImVec2(100, 0)))
+                {
+                    // Löscht das aktuell in der Combo ausgewählte Theme, sofern eines ausgewählt ist
+                    if (selectedThemeIndex >= 0 && selectedThemeIndex < allThemes.size())
+                    {
+                        gThemeManager->deleteTheme(allThemes[selectedThemeIndex]);
+                        // Nach dem Löschen Liste neu laden
+                        selectedThemeIndex = -1;
+                    }
+                }
+
+                ImGuiStyle &style = ImGui::GetStyle();
+
+                // --- Individuelle Farb-Anpassungen ---
+                if (ImGui::TreeNode("Window"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_WindowBg];
+                    if (ImGui::ColorEdit4("WindowBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_WindowBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_WindowBg", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ChildBg];
+                    if (ImGui::ColorEdit4("ChildBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ChildBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ChildBg", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_PopupBg];
+                    if (ImGui::ColorEdit4("PopupBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_PopupBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_PopupBg", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Title"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_Border];
+                    if (ImGui::ColorEdit4("Border", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_Border] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_Border", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TitleBg];
+                    if (ImGui::ColorEdit4("TitleBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TitleBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TitleBg", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TitleBgActive];
+                    if (ImGui::ColorEdit4("TitleBgActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TitleBgActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TitleBgActive", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TitleBgCollapsed];
+                    if (ImGui::ColorEdit4("TitleBgCollapsed", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TitleBgCollapsed] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TitleBgCollapsed", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Header"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_Header];
+                    if (ImGui::ColorEdit4("Header", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_Header] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_Header", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_HeaderHovered];
+                    if (ImGui::ColorEdit4("HeaderHovered", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_HeaderHovered] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_HeaderHovered", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_HeaderActive];
+                    if (ImGui::ColorEdit4("HeaderActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_HeaderActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_HeaderActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Buttons"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_Button];
+                    if (ImGui::ColorEdit4("Button", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_Button] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_Button", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ButtonHovered];
+                    if (ImGui::ColorEdit4("ButtonHovered", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ButtonHovered] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ButtonHovered", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ButtonActive];
+                    if (ImGui::ColorEdit4("ButtonActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ButtonActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ButtonActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Frames"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_FrameBg];
+                    if (ImGui::ColorEdit4("FrameBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_FrameBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_FrameBg", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_FrameBgHovered];
+                    if (ImGui::ColorEdit4("FrameBgHovered", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_FrameBgHovered] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_FrameBgHovered", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_FrameBgActive];
+                    if (ImGui::ColorEdit4("FrameBgActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_FrameBgActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_FrameBgActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Tabs"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_Tab];
+                    if (ImGui::ColorEdit4("Tab", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_Tab] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_Tab", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TabHovered];
+                    if (ImGui::ColorEdit4("TabHovered", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TabHovered] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TabHovered", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TabActive];
+                    if (ImGui::ColorEdit4("TabActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TabActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TabActive", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TabUnfocused];
+                    if (ImGui::ColorEdit4("TabUnfocused", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TabUnfocused] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TabUnfocused", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TabUnfocusedActive];
+                    if (ImGui::ColorEdit4("TabUnfocusedActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TabUnfocusedActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TabUnfocusedActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Slider"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_SliderGrab];
+                    if (ImGui::ColorEdit4("SliderGrab", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_SliderGrab] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_SliderGrab", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_SliderGrabActive];
+                    if (ImGui::ColorEdit4("SliderGrabActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_SliderGrabActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_SliderGrabActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Scrollbar"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_ScrollbarBg];
+                    if (ImGui::ColorEdit4("ScrollbarBg", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ScrollbarBg] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ScrollbarBg", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ScrollbarGrab];
+                    if (ImGui::ColorEdit4("ScrollbarGrab", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ScrollbarGrab] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ScrollbarGrab", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ScrollbarGrabHovered];
+                    if (ImGui::ColorEdit4("ScrollbarGrabHovered", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ScrollbarGrabHovered] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ScrollbarGrabHovered", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_ScrollbarGrabActive];
+                    if (ImGui::ColorEdit4("ScrollbarGrabActive", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_ScrollbarGrabActive] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_ScrollbarGrabActive", color);
+                    }
+                    ImGui::TreePop();
+                }
+
+                if (ImGui::TreeNode("Text"))
+                {
+                    ImVec4 color = style.Colors[ImGuiCol_Text];
+                    if (ImGui::ColorEdit4("Text", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_Text] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_Text", color);
+                    }
+
+                    color = style.Colors[ImGuiCol_TextDisabled];
+                    if (ImGui::ColorEdit4("TextDisabled", (float *)&color))
+                    {
+                        style.Colors[ImGuiCol_TextDisabled] = color;
+                        gThemeManager->updateCustomColor("ImGuiCol_TextDisabled", color);
+                    }
+                    ImGui::TreePop();
+                }
             }
+
             // Einklappbarer Bereich für die Log-Dateien
             if (ImGui::CollapsingHeader("Log Dateien"))
             {

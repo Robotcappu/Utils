@@ -17,9 +17,10 @@ endif()
 # Header-Suchpfade
 include_directories(
     ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/modules
+    ${CMAKE_SOURCE_DIR}/modules/core
     ${CMAKE_SOURCE_DIR}/imgui
     ${CMAKE_SOURCE_DIR}/json
+    ${CMAKE_SOURCE_DIR}/modules/settings
 )
 
 # Alle relevanten .cpp-Dateien automatisch sammeln
@@ -32,8 +33,10 @@ file(GLOB_RECURSE SOURCES
 add_executable(${PROJECT_NAME}
     main.cpp
     gui.cpp
-    modules/core/Logger.cpp  # <- Logger hier eintragen
-    # Weitere .cpp-Dateien, z.B. aus dem imgui-Ordner ...
+    modules/core/Logger.cpp
+    modules/core/ConfigHandler.cpp
+    modules/settings/Theme.cpp
+    modules/settings/ThemeManager.cpp
     imgui/imgui.cpp
     imgui/imgui_demo.cpp
     imgui/imgui_draw.cpp
