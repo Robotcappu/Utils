@@ -8,6 +8,7 @@
 #include <iostream>
 #include <d3d9.h>
 #pragma comment(lib, "d3d9.lib")
+#include <thread>
 #include <tchar.h>
 #include <thread>
 
@@ -130,6 +131,19 @@ void gui::CreateHWindow(
         MessageBoxW(NULL, L"Fenster konnte nicht erstellt werden.", L"Fehler", MB_ICONERROR);
         return;
     }
+
+    if (!window)
+    {
+        MessageBoxW(NULL, L"Fenster konnte nicht erstellt werden.", L"Fehler", MB_ICONERROR);
+        return;
+    }
+
+    // Nachdem das Fenster erfolgreich erstellt wurde, also direkt vor ShowWindow/UpdateWindow:
+    LONG exStyle = GetWindowLong(window, GWL_EXSTYLE);
+    SetWindowLong(window, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+
+    // Setze den Farbschlüssel: Alle Pixel in Schwarz (0,0,0) werden transparent
+    SetLayeredWindowAttributes(window, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
     ShowWindow(window, SW_SHOWDEFAULT);
     UpdateWindow(window);
@@ -305,7 +319,7 @@ void gui::Render() noexcept
             {
                 static int currentLevel = 0; // 0: DEBUG, 1: INFO, 2: WARNING, 3: ERROR
                 const char *levels[] = {"DEBUG", "INFO", "WARNING", "ERROR"};
-                
+
                 if (ImGui::Combo("Log Level", &currentLevel, levels, IM_ARRAYSIZE(levels)))
                 {
                     switch (currentLevel)
