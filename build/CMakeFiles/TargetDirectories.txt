@@ -1,3 +1,0 @@
-D:/developing/c++/SauberZauber/build/CMakeFiles/Util.dir
-D:/developing/c++/SauberZauber/build/CMakeFiles/edit_cache.dir
-D:/developing/c++/SauberZauber/build/CMakeFiles/rebuild_cache.dir
