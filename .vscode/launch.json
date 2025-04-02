@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "C++ Launch",
+        "type": "cppvsdbg", // <- Das ist der Schlüssel!
+        "request": "launch",
+        "program": "${workspaceFolder}/build/Util.exe",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [],
+      }
+    ]
+  }
+  

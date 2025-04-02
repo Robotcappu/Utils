@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "CMake Soft Clean",
+        "type": "shell",
+        "command": "cmd",
+        "args": [
+          "/c",
+          "del /f /q build\\* & for /d %d in (build\\*) do rmdir /s /q \"%d\""
+        ],
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
+        "problemMatcher": [],
+        "detail": "Deletes everything inside build/ but keeps the folder."
+      }      
+    ]
+}

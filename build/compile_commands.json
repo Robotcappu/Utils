@@ -1,0 +1,62 @@
+[
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\main.cpp.obj -c D:\\developing\\c++\\SauberZauber\\main.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\main.cpp",
+  "output": "CMakeFiles\\Util.dir\\main.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\gui.cpp.obj -c D:\\developing\\c++\\SauberZauber\\gui.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\gui.cpp",
+  "output": "CMakeFiles\\Util.dir\\gui.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\modules\\core\\Logger.cpp.obj -c D:\\developing\\c++\\SauberZauber\\modules\\core\\Logger.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\modules\\core\\Logger.cpp",
+  "output": "CMakeFiles\\Util.dir\\modules\\core\\Logger.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_demo.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_demo.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_demo.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_demo.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_draw.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_draw.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_draw.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_draw.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_impl_dx9.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_impl_dx9.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_impl_dx9.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_impl_dx9.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_impl_win32.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_impl_win32.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_impl_win32.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_impl_win32.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_tables.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_tables.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_tables.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_tables.cpp.obj"
+},
+{
+  "directory": "D:/developing/c++/SauberZauber/build",
+  "command": "C:\\msys64\\mingw64\\bin\\g++.exe -DUNICODE -D_UNICODE -ID:/developing/c++/SauberZauber -ID:/developing/c++/SauberZauber/modules -ID:/developing/c++/SauberZauber/imgui -ID:/developing/c++/SauberZauber/json -g -std=gnu++17 -o CMakeFiles\\Util.dir\\imgui\\imgui_widgets.cpp.obj -c D:\\developing\\c++\\SauberZauber\\imgui\\imgui_widgets.cpp",
+  "file": "D:\\developing\\c++\\SauberZauber\\imgui\\imgui_widgets.cpp",
+  "output": "CMakeFiles\\Util.dir\\imgui\\imgui_widgets.cpp.obj"
+}
+]
