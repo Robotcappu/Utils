@@ -1,4 +1,4 @@
-// modules/cleaners/FindDuplicates.h
+// FindDuplicates.h
 #pragma once
 
 #include <string>
@@ -6,13 +6,14 @@
 
 struct DuplicateGroup
 {
-    std::string path1;
-    std::string path2;
-    bool sameName;
+    std::vector<std::string> paths;
 };
 
 namespace FindDuplicates
 {
-    // Scannt einen Ordner rekursiv und liefert doppelte Dateien zurück
+    // Hash-Berechnung des Dateiinhalts
+    std::string hashFile(const std::string& path);
+
+    // Findet Duplikate anhand des Dateiinhalts
     std::vector<DuplicateGroup> findInFolder(const std::string& folderPath);
 } // namespace FindDuplicates

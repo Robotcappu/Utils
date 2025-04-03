@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <filesystem>
 #include <future>
+#include <iomanip>
 
 #include "gui.h"
 #include "imgui/imgui.h"
@@ -319,6 +320,12 @@ void gui::Render() noexcept
 
         if (ImGui::BeginTabItem("Cleanup"))
         {
+            static bool deleteInProgress = false;
+            static float deleteProgress = 0.0f;
+            static size_t totalToDelete = 0;
+            static size_t deletedCount = 0;
+
+            ImGui::Text("Scan einen Ordner nach doppelten Dateien");
             ImGui::PushItemWidth(260);
             ImGui::InputText("##FolderInput", folderPath, IM_ARRAYSIZE(folderPath));
             ImGui::PopItemWidth();
@@ -343,16 +350,33 @@ void gui::Render() noexcept
                 std::string folder(folderPath);
                 size_t minSize = minSizeMB;
 
-                Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_CLEANING, "Async-Scan gestartet für: " + folder, __func__, __FILE__, __LINE__);
+                Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_CLEANING, "Thread-Scan gestartet für: " + folder, __func__, __FILE__, __LINE__);
 
-                scanFuture = std::async(std::launch::async, [folder, minSize]()
-                                        {
-                    auto dups = FindDuplicates::findInFolder(folder);
-                    auto large = FindFiles::findLargeFiles(folder, minSize * 1024 * 1024);
-                    return std::make_pair(dups, large); });
+                std::thread([](std::string folderCopy, size_t minSizeCopy)
+                            {
+            try
+            {
+                auto dups = FindDuplicates::findInFolder(folderCopy);
+                auto large = FindFiles::findLargeFiles(folderCopy, minSizeCopy * 1024 * 1024);
+
+                duplicates = std::move(dups);
+                largeFiles = std::move(large);
+
+                Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_CLEANING,
+                    "Thread-Scan abgeschlossen. Duplikate: " + std::to_string(duplicates.size()) +
+                    ", Große Dateien: " + std::to_string(largeFiles.size()), __func__, __FILE__, __LINE__);
+            }
+            catch (const std::exception& e)
+            {
+                scanError = e.what();
+                Logger::instance().log(LogLevel::LOG_ERROR, LogCategory::LOG_SYSTEM,
+                    "Thread-Scan Fehler: " + scanError, __func__, __FILE__, __LINE__);
             }
 
-            // ⏳ Warten auf Future-Ergebnis
+            scanInProgress = false; }, folder, minSize)
+                    .detach();
+            }
+
             if (scanInProgress && scanFuture.valid())
             {
                 if (scanFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
@@ -386,66 +410,85 @@ void gui::Render() noexcept
             }
 
             ImGui::Separator();
+            ImGui::Text("Bitte wähle die Dateien aus die du behalten möchtest");
+            ImGui::Text("");
             ImGui::Text("Doppelte Dateien: %zu", duplicates.size());
             ImGui::BeginChild("DuplicatesList", ImVec2(0, 150), true);
+
             for (size_t i = 0; i < duplicates.size(); ++i)
             {
-                const auto &dup = duplicates[i];
+                const auto &group = duplicates[i];
+                ImGui::Text("%zu) Duplikat-Gruppe:", i + 1);
 
-                std::string name1 = std::filesystem::path(dup.path1).filename().string();
-                std::string name2 = std::filesystem::path(dup.path2).filename().string();
-
-                ImGui::Text("%zu) Duplikat:", i + 1);
-
-                bool selected1 = filesToDelete.count(dup.path1) > 0;
-                bool selected2 = filesToDelete.count(dup.path2) > 0;
-
-                // 🔄 Standardauswahl: Wenn beide nicht ausgewählt, wähle path2
-                if (!selected1 && !selected2)
+                // Finde den aktuell ausgewählten Index für diese Gruppe
+                int selectedIndex = -1;
+                for (size_t j = 0; j < group.paths.size(); ++j)
                 {
-                    filesToDelete.insert(dup.path2);
-                    selected2 = true;
-                }
-
-                std::string id1 = "##dup_" + std::to_string(i) + "_1";
-                std::string id2 = "##dup_" + std::to_string(i) + "_2";
-
-                if (ImGui::Checkbox((name1 + id1).c_str(), &selected1))
-                {
-                    if (selected1)
+                    if (filesToDelete.count(group.paths[j]) > 0)
                     {
-                        filesToDelete.insert(dup.path1);
-                        filesToDelete.erase(dup.path2);
-                    }
-                    else
-                    {
-                        filesToDelete.erase(dup.path1);
+                        selectedIndex = static_cast<int>(j);
+                        break;
                     }
                 }
 
-                if (ImGui::Checkbox((name2 + id2).c_str(), &selected2))
+                // Falls keiner gesetzt ist, setze standardmäßig die erste Datei
+                if (selectedIndex == -1 && !group.paths.empty())
                 {
-                    if (selected2)
+                    selectedIndex = 0;
+                    filesToDelete.insert(group.paths[0]);
+                }
+
+                // Zeichne die Checkboxen
+                for (size_t j = 0; j < group.paths.size(); ++j)
+                {
+                    const std::string &path = group.paths[j];
+                    std::string filename = std::filesystem::path(path).filename().string();
+                    std::string checkboxID = "##dup_" + std::to_string(i) + "_" + std::to_string(j);
+
+                    bool checked = (selectedIndex == static_cast<int>(j));
+
+                    if (ImGui::Checkbox((filename + checkboxID).c_str(), &checked))
                     {
-                        filesToDelete.insert(dup.path2);
-                        filesToDelete.erase(dup.path1);
-                    }
-                    else
-                    {
-                        filesToDelete.erase(dup.path2);
+                        // Wenn der Benutzer was auswählt, alle anderen aus der Gruppe entfernen
+                        for (size_t k = 0; k < group.paths.size(); ++k)
+                        {
+                            filesToDelete.erase(group.paths[k]);
+                        }
+
+                        // Und den neuen Eintrag setzen
+                        filesToDelete.insert(path);
+                        selectedIndex = static_cast<int>(j);
                     }
                 }
 
                 ImGui::Separator();
             }
+
             ImGui::EndChild();
 
-            ImGui::Separator();
+            ImGui::Text("");
             ImGui::Text("Große Dateien:");
             ImGui::BeginChild("LargeFilesList", ImVec2(0, 150), true);
             for (const auto &file : largeFiles)
             {
-                std::string label = file.path + " (" + std::to_string(file.size / 1024 / 1024) + " MB)";
+                // Nur den Dateinamen anzeigen, nicht den kompletten Pfad
+                std::string filename = std::filesystem::path(file.path).filename().string();
+                float fileSizeMB = static_cast<float>(file.size) / (1024 * 1024); // Umrechnung in MB
+
+                std::string label;
+                if (fileSizeMB >= 1024) // Ab 1GB
+                {
+                    // Runde auf eine Nachkommastelle
+                    std::ostringstream oss;
+                    oss << std::fixed << std::setprecision(1) << (fileSizeMB / 1024);
+                    label = filename + " (" + oss.str() + " GB)";
+                }
+                else
+                {
+                    // Zeige MB ohne Dezimalstellen
+                    label = filename + " (" + std::to_string(static_cast<int>(fileSizeMB)) + " MB)";
+                }
+
                 ImGui::Selectable(label.c_str());
 
                 bool checked = filesToDelete.count(file.path) > 0;
@@ -459,31 +502,49 @@ void gui::Render() noexcept
             }
             ImGui::EndChild();
 
-            if (ImGui::Button("Auswahl löschen"))
+            if (deleteInProgress)
+            {
+                ImGui::Text("Lösche Dateien...");
+                ImGui::ProgressBar(deleteProgress, ImVec2(-1, 0), "");
+            }
+
+            if (!deleteInProgress && ImGui::Button("Auswahl löschen"))
             {
                 PopupHandler::openConfirmationPopup("deleteSelected", "Möchtest du die markierten Dateien wirklich löschen?", [](bool confirmed)
                                                     {
             if (confirmed)
             {
-                for (const auto& path : filesToDelete)
-                {
-                    try
-                    {
-                        if (std::filesystem::remove(path))
-                        {
-                            Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_FILES, "Datei gelöscht: " + path, __func__, __FILE__, __LINE__);
-                        }
-                    }
-                    catch (const std::exception& e)
-                    {
-                        Logger::instance().log(LogLevel::LOG_ERROR, LogCategory::LOG_FILES, "Fehler beim Löschen: " + path + " - " + e.what(), __func__, __FILE__, __LINE__);
-                    }
-                }
+                deleteInProgress = true;
+                deleteProgress = 0.0f;
+                deletedCount = 0;
+                totalToDelete = filesToDelete.size();
 
-                // clear Variables and GUI
-                filesToDelete.clear();
-                duplicates.clear();
-                largeFiles.clear();
+                std::thread([]()
+                {
+                    size_t index = 0;
+                    for (const auto& path : filesToDelete)
+                    {
+                        try
+                        {
+                            if (std::filesystem::remove(path))
+                            {
+                                Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_FILES, "Datei gelöscht: " + path, __func__, __FILE__, __LINE__);
+                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            Logger::instance().log(LogLevel::LOG_ERROR, LogCategory::LOG_FILES, "Fehler beim Löschen: " + path + " - " + e.what(), __func__, __FILE__, __LINE__);
+                        }
+
+                        deletedCount++;
+                        deleteProgress = static_cast<float>(deletedCount) / static_cast<float>(totalToDelete);
+                    }
+
+                    filesToDelete.clear();
+                    duplicates.clear();
+                    largeFiles.clear();
+                    deleteInProgress = false;
+                }).detach();
             } });
             }
 

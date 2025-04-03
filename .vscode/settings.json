@@ -91,6 +91,10 @@
         "xtr1common": "cpp",
         "xtree": "cpp",
         "xutility": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "future": "cpp",
+        "coroutine": "cpp",
+        "resumable": "cpp",
+        "unordered_set": "cpp"
     }
 }

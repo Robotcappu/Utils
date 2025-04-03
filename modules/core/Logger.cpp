@@ -7,11 +7,36 @@ Logger& Logger::instance() {
     return instance;
 }
 
+#include <filesystem>
+#include <windows.h>
+
 Logger::Logger() {
-    // Standardmäßig wird in "sauberzauber.log" geschrieben
-    logFile.open("sauberzauber.log", std::ios::app);
-    if (!logFile.is_open()) {
-        std::cerr << "Fehler: Log-Datei konnte nicht geöffnet werden!" << std::endl;
+    try {
+        // AppData Pfad holen
+        char* appDataPath = nullptr;
+        size_t len = 0;
+        _dupenv_s(&appDataPath, &len, "APPDATA");
+
+        if (!appDataPath) {
+            throw std::runtime_error("APPDATA konnte nicht gefunden werden");
+        }
+
+        std::string logDir = std::string(appDataPath) + "\\UtilsApp\\logs\\";
+        std::filesystem::create_directories(logDir); // Ordnerstruktur anlegen
+
+        // Timestamp als Dateiname
+        std::string timestamp = getTimestampForFilename();
+        std::string fullPath = logDir + "log_" + timestamp + ".json";
+
+        // Logdatei öffnen
+        logFile.open(fullPath, std::ios::app);
+        if (!logFile.is_open()) {
+            std::cerr << "Fehler: Log-Datei konnte nicht geöffnet werden!" << std::endl;
+        }
+
+        free(appDataPath);
+    } catch (const std::exception& ex) {
+        std::cerr << "Logger Init-Fehler: " << ex.what() << std::endl;
     }
 }
 
@@ -103,4 +128,18 @@ std::string Logger::logCategoryToString(LogCategory category) {
         case LogCategory::LOG_CONFIG:   return "LOG_CONFIG";
         default:                    return "UNKNOWN";
     }
+}
+
+std::string Logger::getTimestampForFilename() {
+    auto now = std::chrono::system_clock::now();
+    auto timeT = std::chrono::system_clock::to_time_t(now);
+    std::tm tm;
+#ifdef _WIN32
+    localtime_s(&tm, &timeT);
+#else
+    localtime_r(&timeT, &tm);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    return oss.str();
 }
