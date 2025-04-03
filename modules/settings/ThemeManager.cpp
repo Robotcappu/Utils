@@ -1,3 +1,4 @@
+// ThemeManager.cpp
 #include "ThemeManager.h"
 #include "ThemeDefinition.h" // Enthält z.B. BlueThemeColors, NeonThemeColors, BlueThemeColorCount, NeonThemeColorCount
 #include <algorithm>
@@ -131,17 +132,32 @@ ThemeManager::ThemeManager(const std::string& configPath)
 
 void ThemeManager::loadFromConfig()
 {
-    configHandler.load();
+    bool loaded = configHandler.load();
     config = configHandler.getConfig();
-    if (!config.contains("Themes")) {
-        config["Themes"] = nlohmann::json::object();
+
+    bool configInvalid = !loaded || config.is_null() || !config.is_object();
+
+    // Notfalls neue Standard-Konfiguration erstellen
+    if (configInvalid || !config.contains("Themes") || !config.contains("CurrentTheme")) {
+        config = nlohmann::json{
+            {"Themes", {
+                {"Light", {{"type", "builtin"}}},
+                {"Dark",  {{"type", "builtin"}}},
+                {"Blue",  {{"type", "builtin"}}},
+                {"Neon",  {{"type", "builtin"}}}
+            }},
+            {"CurrentTheme", "Dark"}
+        };
+
+        configHandler.setConfig(config);
+        configHandler.save();
     }
-    if (!config.contains("CurrentTheme")) {
-        config["CurrentTheme"] = "Dark";
-    }
+
+    // Jetzt Themes & ThemeName sicher vorhanden
     currentThemeName = config["CurrentTheme"].get<std::string>();
     applyTheme(currentThemeName);
 }
+
 
 void ThemeManager::saveToConfig()
 {
@@ -251,4 +267,19 @@ void ThemeManager::saveCurrentThemeAs(const std::string& themeName)
         {"colors", colorData}
     };
     saveToConfig();
+}
+
+void ThemeManager::ensureDefaultConfig()
+{
+    config = nlohmann::json{
+        {"Themes", {
+            {"Light", {{"type", "builtin"}}},
+            {"Dark",  {{"type", "builtin"}}},
+            {"Blue",  {{"type", "builtin"}}},
+            {"Neon",  {{"type", "builtin"}}}
+        }},
+        {"CurrentTheme", "Dark"}
+    };
+    configHandler.setConfig(config);
+    configHandler.save();
 }

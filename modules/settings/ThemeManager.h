@@ -62,6 +62,10 @@ public:
     void saveCurrentThemeAs(const std::string& themeName);
 
 private:
+
+    // Stellt sicher, dass die config Gültig ist
+    void ensureDefaultConfig();
+    
     // Wendet ein Theme an (unterscheidet zwischen Built-in und Custom).
     void applyTheme(const std::string& themeName);
 

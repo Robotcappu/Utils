@@ -304,49 +304,74 @@ void gui::Render() noexcept
             {
                 ImGui::Text("Templates");
 
-                // Kombinierte Liste aller Themes (Built-in und Custom)
-                std::vector<std::string> allThemes = gThemeManager->getAllThemeNames();
+                static std::vector<std::string> allThemes;
                 static int selectedThemeIndex = -1;
+                static char newThemeName[32] = "";
+
+                // Hilfsfunktion zum Refresh der Theme-Liste
+                auto RefreshThemeList = []()
+                {
+                    allThemes = gThemeManager->getAllThemeNames();
+                };
+
+                // Initial-Refresh (nur beim ersten Mal)
+                static bool firstRun = true;
+                if (firstRun)
+                {
+                    RefreshThemeList();
+
+                    std::string currentTheme = gThemeManager->getCurrentThemeName();
+                    auto it = std::find(allThemes.begin(), allThemes.end(), currentTheme);
+                    if (it != allThemes.end())
+                        selectedThemeIndex = static_cast<int>(std::distance(allThemes.begin(), it));
+                    else
+                        selectedThemeIndex = 0; // Fallback, wenn nicht gefunden
+
+                    firstRun = false;
+                }
+
+                // Theme-Auswahl per Combo
                 if (!allThemes.empty())
                 {
-                    std::vector<const char *> themeNames;
-                    for (const auto &name : allThemes)
-                        themeNames.push_back(name.c_str());
-
-                    if (ImGui::Combo("Theme", &selectedThemeIndex, themeNames.data(), themeNames.size()))
+                    if (ImGui::Combo("Theme", &selectedThemeIndex, [](void *data, int idx, const char **out_text)
+                                     {
+                         const auto &names = *static_cast<std::vector<std::string> *>(data);
+                         if (idx < 0 || idx >= static_cast<int>(names.size()))
+                             return false;
+                         *out_text = names[idx].c_str();
+                         return true; }, static_cast<void *>(&allThemes), static_cast<int>(allThemes.size())))
                     {
-                        if (selectedThemeIndex >= 0 && selectedThemeIndex < allThemes.size())
-                        {
-                            gThemeManager->setCurrentTheme(allThemes[selectedThemeIndex]);
-                        }
+                        gThemeManager->setCurrentTheme(allThemes[selectedThemeIndex]);
                     }
                 }
 
-                // Eingabefeld für neuen Theme-Namen (zum Speichern)
-                static char newThemeName[64] = "";
+                // Neuer Theme-Name
                 ImGui::InputText("New Theme Name", newThemeName, sizeof(newThemeName));
 
-                // Button: Save Theme
+                // Theme speichern
                 if (ImGui::Button("Save Theme", ImVec2(100, 0)))
                 {
                     if (strlen(newThemeName) > 0)
                     {
                         gThemeManager->saveCurrentThemeAs(newThemeName);
-                        // Optional: Liste aktualisieren
-                        selectedThemeIndex = -1;
+                        RefreshThemeList();
+
+                        // neuen Index setzen
+                        selectedThemeIndex = static_cast<int>(allThemes.size()) - 1;
+                        memset(newThemeName, 0, sizeof(newThemeName));
                     }
                 }
-                ImGui::SameLine();
 
-                // Button: Delete Theme
-                if (ImGui::Button("Delete Theme", ImVec2(100, 0)))
+                // Theme löschen (nur wenn kein Standard-Theme)
+                bool isDefaultThemeSelected = (selectedThemeIndex >= 4);
+                if (isDefaultThemeSelected)
                 {
-                    // Löscht das aktuell in der Combo ausgewählte Theme, sofern eines ausgewählt ist
-                    if (selectedThemeIndex >= 0 && selectedThemeIndex < allThemes.size())
+                    ImGui::SameLine();
+                    if (ImGui::Button("Delete Theme", ImVec2(100, 0)))
                     {
                         gThemeManager->deleteTheme(allThemes[selectedThemeIndex]);
-                        // Nach dem Löschen Liste neu laden
-                        selectedThemeIndex = -1;
+                        RefreshThemeList();
+                        selectedThemeIndex = std::min(1, static_cast<int>(allThemes.size()) - 1);
                     }
                 }
 
