@@ -7,7 +7,7 @@ BuiltinTheme ThemeManager::builtinThemeFromName(const std::string& name) const
     if (name == "Light") return BuiltinTheme::Light;
     if (name == "Dark")  return BuiltinTheme::Dark;
     if (name == "Blue")  return BuiltinTheme::Blue;
-    return BuiltinTheme::Neon; // Fallback
+    return BuiltinTheme::Dark; // Fallback
 }
 
 void ThemeManager::applyTheme(const std::string& themeName)
