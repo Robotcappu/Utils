@@ -1,6 +1,7 @@
 #include "Logger.h"
 #include <iostream>
 
+
 // Singleton-Instanz
 Logger& Logger::instance() {
     static Logger instance;
@@ -13,9 +14,7 @@ Logger& Logger::instance() {
 Logger::Logger() {
     try {
         // AppData Pfad holen
-        char* appDataPath = nullptr;
-        size_t len = 0;
-        _dupenv_s(&appDataPath, &len, "APPDATA");
+        const char* appDataPath = getenv("APPDATA");
 
         if (!appDataPath) {
             throw std::runtime_error("APPDATA konnte nicht gefunden werden");
@@ -34,7 +33,6 @@ Logger::Logger() {
             std::cerr << "Fehler: Log-Datei konnte nicht geöffnet werden!" << std::endl;
         }
 
-        free(appDataPath);
     } catch (const std::exception& ex) {
         std::cerr << "Logger Init-Fehler: " << ex.what() << std::endl;
     }

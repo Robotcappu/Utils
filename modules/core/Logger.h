@@ -67,7 +67,7 @@ private:
     std::string getTimestamp();
     std::string logLevelToString(LogLevel level);
     std::string logCategoryToString(LogCategory category);
-    std::string Logger::getTimestampForFilename();
+    std::string getTimestampForFilename();
 };
 
 #endif // LOGGER_H
