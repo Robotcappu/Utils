@@ -5,6 +5,9 @@
 #pragma comment(lib, "d3d9.lib")
 #include <tchar.h>
 #include <thread>
+#include <unordered_set>
+#include <filesystem>
+#include <future>
 
 #include "gui.h"
 #include "imgui/imgui.h"
@@ -14,6 +17,22 @@
 #include "Globals.h"
 #include "modules/settings/Theme.h"
 #include "modules/settings/ThemeManager.h"
+#include "modules/cleaners/FindDuplicates.h"
+#include "modules/cleaners/FindFiles.h"
+#include "modules/utilities/PopupHandler.h"
+#include "modules/utilities/CacheHandler.h"
+#include "modules/core/Logger.h"
+#include "modules/utilities/GetFolder.h"
+
+static char folderPath[260] = "C:";
+static size_t minSizeMB = 100;
+static std::vector<DuplicateGroup> duplicates;
+static std::vector<LargeFileEntry> largeFiles;
+static std::unordered_set<std::string> filesToDelete;
+
+static std::future<std::pair<std::vector<DuplicateGroup>, std::vector<LargeFileEntry>>> scanFuture;
+static bool scanInProgress = false;
+static std::string scanError;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
     HWND window,
@@ -298,7 +317,181 @@ void gui::Render() noexcept
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Templates & Einstellungen"))
+        if (ImGui::BeginTabItem("Cleanup"))
+        {
+            ImGui::PushItemWidth(260);
+            ImGui::InputText("##FolderInput", folderPath, IM_ARRAYSIZE(folderPath));
+            ImGui::PopItemWidth();
+            ImGui::SameLine();
+            if (ImGui::Button("Ordner wählen"))
+            {
+                std::string selected = GetFolder::openDialog();
+                if (!selected.empty())
+                {
+                    strncpy(folderPath, selected.c_str(), IM_ARRAYSIZE(folderPath));
+                }
+            }
+
+            ImGui::InputScalar("Min. Größe (MB)", ImGuiDataType_U64, &minSizeMB);
+
+            if (!scanInProgress && ImGui::Button("Scan starten"))
+            {
+                scanInProgress = true;
+                scanError.clear();
+                filesToDelete.clear();
+
+                std::string folder(folderPath);
+                size_t minSize = minSizeMB;
+
+                Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_CLEANING, "Async-Scan gestartet für: " + folder, __func__, __FILE__, __LINE__);
+
+                scanFuture = std::async(std::launch::async, [folder, minSize]()
+                                        {
+                    auto dups = FindDuplicates::findInFolder(folder);
+                    auto large = FindFiles::findLargeFiles(folder, minSize * 1024 * 1024);
+                    return std::make_pair(dups, large); });
+            }
+
+            // ⏳ Warten auf Future-Ergebnis
+            if (scanInProgress && scanFuture.valid())
+            {
+                if (scanFuture.wait_for(std::chrono::milliseconds(10)) == std::future_status::ready)
+                {
+                    try
+                    {
+                        auto result = scanFuture.get();
+                        duplicates = std::move(result.first);
+                        largeFiles = std::move(result.second);
+                        Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_CLEANING,
+                                               "Async-Scan abgeschlossen. Duplikate: " + std::to_string(duplicates.size()) +
+                                                   ", Große Dateien: " + std::to_string(largeFiles.size()),
+                                               __func__, __FILE__, __LINE__);
+                    }
+                    catch (const std::exception &e)
+                    {
+                        scanError = e.what();
+                        Logger::instance().log(LogLevel::LOG_ERROR, LogCategory::LOG_SYSTEM, "Async-Scan Fehler: " + scanError, __func__, __FILE__, __LINE__);
+                    }
+                    scanInProgress = false;
+                }
+                else
+                {
+                    ImGui::Text("🔄 Scan läuft...");
+                }
+            }
+
+            if (!scanError.empty())
+            {
+                ImGui::TextColored(ImVec4(1, 0, 0, 1), "Fehler beim Scan: %s", scanError.c_str());
+            }
+
+            ImGui::Separator();
+            ImGui::Text("Doppelte Dateien: %zu", duplicates.size());
+            ImGui::BeginChild("DuplicatesList", ImVec2(0, 150), true);
+            for (size_t i = 0; i < duplicates.size(); ++i)
+            {
+                const auto &dup = duplicates[i];
+
+                std::string name1 = std::filesystem::path(dup.path1).filename().string();
+                std::string name2 = std::filesystem::path(dup.path2).filename().string();
+
+                ImGui::Text("%zu) Duplikat:", i + 1);
+
+                bool selected1 = filesToDelete.count(dup.path1) > 0;
+                bool selected2 = filesToDelete.count(dup.path2) > 0;
+
+                // 🔄 Standardauswahl: Wenn beide nicht ausgewählt, wähle path2
+                if (!selected1 && !selected2)
+                {
+                    filesToDelete.insert(dup.path2);
+                    selected2 = true;
+                }
+
+                std::string id1 = "##dup_" + std::to_string(i) + "_1";
+                std::string id2 = "##dup_" + std::to_string(i) + "_2";
+
+                if (ImGui::Checkbox((name1 + id1).c_str(), &selected1))
+                {
+                    if (selected1)
+                    {
+                        filesToDelete.insert(dup.path1);
+                        filesToDelete.erase(dup.path2);
+                    }
+                    else
+                    {
+                        filesToDelete.erase(dup.path1);
+                    }
+                }
+
+                if (ImGui::Checkbox((name2 + id2).c_str(), &selected2))
+                {
+                    if (selected2)
+                    {
+                        filesToDelete.insert(dup.path2);
+                        filesToDelete.erase(dup.path1);
+                    }
+                    else
+                    {
+                        filesToDelete.erase(dup.path2);
+                    }
+                }
+
+                ImGui::Separator();
+            }
+            ImGui::EndChild();
+
+            ImGui::Separator();
+            ImGui::Text("Große Dateien:");
+            ImGui::BeginChild("LargeFilesList", ImVec2(0, 150), true);
+            for (const auto &file : largeFiles)
+            {
+                std::string label = file.path + " (" + std::to_string(file.size / 1024 / 1024) + " MB)";
+                ImGui::Selectable(label.c_str());
+
+                bool checked = filesToDelete.count(file.path) > 0;
+                if (ImGui::Checkbox(("##" + file.path).c_str(), &checked))
+                {
+                    if (checked)
+                        filesToDelete.insert(file.path);
+                    else
+                        filesToDelete.erase(file.path);
+                }
+            }
+            ImGui::EndChild();
+
+            if (ImGui::Button("Auswahl löschen"))
+            {
+                PopupHandler::openConfirmationPopup("deleteSelected", "Möchtest du die markierten Dateien wirklich löschen?", [](bool confirmed)
+                                                    {
+            if (confirmed)
+            {
+                for (const auto& path : filesToDelete)
+                {
+                    try
+                    {
+                        if (std::filesystem::remove(path))
+                        {
+                            Logger::instance().log(LogLevel::LOG_INFO, LogCategory::LOG_FILES, "Datei gelöscht: " + path, __func__, __FILE__, __LINE__);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        Logger::instance().log(LogLevel::LOG_ERROR, LogCategory::LOG_FILES, "Fehler beim Löschen: " + path + " - " + e.what(), __func__, __FILE__, __LINE__);
+                    }
+                }
+
+                // clear Variables and GUI
+                filesToDelete.clear();
+                duplicates.clear();
+                largeFiles.clear();
+            } });
+            }
+
+            PopupHandler::render();
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("Einstellungen"))
         {
             if (ImGui::CollapsingHeader("Templates"))
             {
@@ -619,7 +812,7 @@ void gui::Render() noexcept
             }
 
             // Einklappbarer Bereich für die Log-Dateien
-            if (ImGui::CollapsingHeader("Log Dateien"))
+            if (ImGui::CollapsingHeader("Logging"))
             {
                 static int currentLevel = 0; // 0: DEBUG, 1: INFO, 2: WARNING, 3: ERROR
                 const char *levels[] = {"DEBUG", "INFO", "WARNING", "ERROR"};
